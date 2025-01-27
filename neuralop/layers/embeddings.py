@@ -347,6 +347,7 @@ def regular_grid_nd(resolutions: List[int], grid_boundaries: List[List[int]]=[[0
     grid: tuple(Tensor)
     list of tensors describing positional encoding 
     """
+    print(resolutions, grid_boundaries)
     assert len(resolutions) == len(grid_boundaries), "Error: inputs must have same number of dimensions"
     dim = len(resolutions)
 

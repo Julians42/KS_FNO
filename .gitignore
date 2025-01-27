@@ -79,3 +79,9 @@ target/
 
 #Ipython Notebook
 .ipynb_checkpoints
+
+#Sbatch 
+*.out
+*.pt
+*.pth
+*.pkl

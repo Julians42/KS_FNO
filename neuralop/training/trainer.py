@@ -191,6 +191,7 @@ class Trainer:
             sys.stdout.flush()
         
         for epoch in range(self.start_epoch, self.n_epochs):
+            print(f"Training on epoch {epoch}...")
             train_err, avg_loss, avg_lasso_loss, epoch_train_time =\
                   self.train_one_epoch(epoch, train_loader, training_loss)
             epoch_metrics = dict(
@@ -251,7 +252,9 @@ class Trainer:
         self.n_samples = 0
 
         for idx, sample in enumerate(train_loader):
-            
+            # print(f"Training on batch {idx}")
+            # print(sample.shape)
+            # print("hello")
             loss = self.train_one_batch(idx, sample, training_loss)
             loss.backward()
             self.optimizer.step()
@@ -387,7 +390,6 @@ class Trainer:
         loss: float | Tensor
             float value of training loss
         """
-
         self.optimizer.zero_grad(set_to_none=True)
         if self.regularizer:
             self.regularizer.reset()
