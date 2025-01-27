@@ -85,3 +85,7 @@ target/
 *.pt
 *.pth
 *.pkl
+
+# Ignore git workflow
+.github/workflows/
+
