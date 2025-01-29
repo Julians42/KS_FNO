@@ -4,7 +4,7 @@ import numpy as np
 import torch
 
 
-n_samples = 1200
+n_samples = 200
 n_points = 512
 l = 2 * np.pi * 32  # domain length
 dt = .25  # time step size

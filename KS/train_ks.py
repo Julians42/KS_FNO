@@ -49,6 +49,12 @@ config = pipe.read_conf()
 # data = torch.tensor(f['u'][:], dtype = torch.float32)
 data = torch.load(config.data.folder + config.data.file).to(torch.float32).permute(2, 1, 0)
 
+def coarsen_data(data, factor):
+    return data[::factor, :, :]
+
+data = coarsen_data(data, config.data.coarsen_factor)
+
+
 n_train = config.data.n_train
 data_start = config.data.data_start
 Xtrain = data[:, (data_start - 1):1999, :n_train].flatten(1, -1).unsqueeze(1).permute(2, 1, 0)
@@ -89,7 +95,7 @@ test_loader_ks = DataLoader(
     shuffle=False
 )
 # singular test loader for now
-test_loaders = {512: test_loader_ks}
+test_loaders = {256: test_loader_ks}
 
 
 # Creating l2 and h10 loss functions
