@@ -64,6 +64,7 @@ default: &DEFAULT
     batch_size: 512
     n_train: 400
     data_start: 500
+    coarsen_factor: 1 # e.g. don't coarsen
     train_resolution: 512
     n_tests: [50]
     test_resolutions: [512]

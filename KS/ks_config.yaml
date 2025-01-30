@@ -5,7 +5,7 @@ default: &DEFAULT
   n_params_baseline: None
   verbose: True
   arch: 'fno'
-  save_model_path: '/scratch/julian/neuralop/ks_models/pygen_half_res.pth'
+  save_model_path: '/scratch/julian/neuralop/ks_models/pygen_quarter_res.pth'
 
   #Distributed computing
   distributed:
@@ -64,11 +64,11 @@ default: &DEFAULT
     batch_size: 512
     n_train: 400
     data_start: 500
-    coarsen_factor: 2
-    train_resolution: 256
+    coarsen_factor: 4
+    train_resolution: 128
     n_tests: [50]
-    test_resolutions: [256]
-    test_batch_sizes: [256]
+    test_resolutions: [128]
+    test_batch_sizes: [128]
     encode_input: True
     encode_output: False
     architecture:
@@ -76,9 +76,9 @@ default: &DEFAULT
       modes: 20
       T: 2000
       n_samples: 1200
-      n_points: 512
+      n_points: 128
       l: 201.06192982974676 # 2 * np.pi * 32
-      width: 512
+      width: 128
 
   # Patching
   patching:
