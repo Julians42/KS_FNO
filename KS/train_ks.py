@@ -1,4 +1,6 @@
 import sys
+import argparse
+
 import numpy as np
 import scipy
 import torch
@@ -24,14 +26,20 @@ from tensor import TensorDataset
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f"Using device: {device}!")
 
+# get the config file to be run from the command line
+parser = argparse.ArgumentParser()
+parser.add_argument("--config_file", type=str, required=True, help="Path to the config YAML file")
+args = parser.parse_args()
 
-# Load in model configuration
-config_name = "default"
+config_file = args.config_file
+
+print(f"Using config file: {config_file}")
+
 
 pipe = ConfigPipeline(
     [
         YamlConfig(
-            "ks_config.yaml", config_name = "default", config_folder = "."
+            config_file, config_name = "default", config_folder = "."
         ),
         ArgparseConfig(infer_types = True, config_name = None, config_file = None),
         YamlConfig(config_folder = ".")

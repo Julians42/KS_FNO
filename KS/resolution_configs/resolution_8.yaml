@@ -5,7 +5,7 @@ default: &DEFAULT
   n_params_baseline: None
   verbose: True
   arch: 'fno'
-  save_model_path: '/central/groups/esm/jschmitt/neuralop/ks_models/pygen_eighth_res.pth'
+  save_model_path: '/central/groups/esm/jschmitt/neuralop/ks_models/res_8.pth'
 
   #Distributed computing
   distributed:
@@ -65,10 +65,10 @@ default: &DEFAULT
     n_train: 400
     data_start: 500
     coarsen_factor: 8
-    train_resolution: 64
+    train_resolution: 64 # 512/8
     n_tests: [50]
-    test_resolutions: [64]
-    test_batch_sizes: [64]
+    test_resolutions: [64] # 512/16
+    test_batch_sizes: [512] # 512/16
     encode_input: True
     encode_output: False
     architecture:
@@ -76,9 +76,9 @@ default: &DEFAULT
       modes: 20
       T: 2000
       n_samples: 1200
-      n_points: 64
+      n_points: 64 # 512/16
       l: 201.06192982974676 # 2 * np.pi * 32
-      width: 64
+      width: 64 # 512/16
 
   # Patching
   patching:
