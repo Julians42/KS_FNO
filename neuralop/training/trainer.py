@@ -410,7 +410,7 @@ class Trainer:
                 out = self.model(**sample)
         else:
             out = self.model(**sample)
-        
+
         if self.epoch == 0 and idx == 0 and self.verbose:
             print(f"Raw outputs of shape {out.shape}")
 

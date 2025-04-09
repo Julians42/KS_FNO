@@ -23,15 +23,13 @@ import matplotlib.pyplot as plt
 # import custom data loader from tensor.py
 from tensor import TensorDataset
 
+
+
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f"Using device: {device}!")
 
-# get the config file to be run from the command line
-# parser = argparse.ArgumentParser()
-# parser.add_argument("--config_file", type=str, required=True, help="Path to the config YAML file")
-# args = parser.parse_args()
-
 # config_file = args.config_file
+config_file = "/central/groups/esm/reusebi/MLStability/KS_FNO/KS/ryan_config.yaml"
 
 print(f"Using config file: {config_file}")
 
@@ -47,30 +45,36 @@ pipe = ConfigPipeline(
 )
 
 config = pipe.read_conf()
+arch = config['arch']
+coarsef = config['data']['coarsen_factor']
+# config[arch]['n_modes'] = [round(512/coarsef)]
+config[arch]['train_resolution'] = [round(512/coarsef)]
+config[arch]['test_resolutions'] = [round(512/coarsef)]
+
+n_modes = config[arch]['n_modes']
+epochs = config['opt']['n_epochs']
+hidden_channels = config[arch]['hidden_channels']
+nlayers = config[arch]['n_layers']
 
 
 # Load in data - currently messy format - would be good to separate into different file or 
 # reproduce our data generation process in python, but leaving as this for now ;)  
 
-
-# f = h5py.File(config.data.folder + "KS.mat")
-# data = torch.tensor(f['u'][:], dtype = torch.float32)
-data = torch.load(config.data.folder + config.data.file).to(torch.float32).permute(2, 1, 0)
-
+data = torch.load(config.data.folder + config.data.file).to(torch.float32)
 def coarsen_data(data, factor):
-    return data[::factor, :, :]
+    return data[:, :, ::factor]
 
 data = coarsen_data(data, config.data.coarsen_factor)
 
-
 n_train = config.data.n_train
 data_start = config.data.data_start
-Xtrain = data[:, (data_start - 1):1999, :n_train].flatten(1, -1).unsqueeze(1).permute(2, 1, 0)
-ytrain = data[:, data_start:2000, :n_train].flatten(1, -1).unsqueeze(1).permute(2, 1, 0)
+Xtrain = data[:n_train, (data_start - 1):1999, :].reshape(-1,data.shape[-1]).unsqueeze(1)
+ytrain = data[:n_train, data_start:2000, :].reshape(-1,data.shape[-1]).unsqueeze(1)
 
 n_test = config.data.n_tests[0] # could implement for different resolutions
-Xtest = data[:, (data_start - 1):1999, (1200 - n_test):].flatten(1, -1).unsqueeze(1).permute(2, 1, 0)
-ytest = data[:, data_start:2000, (1200 - n_test):].flatten(1, -1).unsqueeze(1).permute(2, 1, 0)
+Xtest = data[(1200 - n_test):, (data_start - 1):1999, :].reshape(-1,data.shape[-1]).unsqueeze(1)
+ytest = data[(1200 - n_test):, data_start:2000, :].reshape(-1,data.shape[-1]).unsqueeze(1)
+
 
 # data loaders
 # Define training dataset
@@ -94,9 +98,7 @@ batch_size = config.data.batch_size
 train_loader_ks = DataLoader(
     dataset=train_dataset,
     batch_size=batch_size,
-    shuffle=True,
-    pin_memory=True,
-    num_workers=4
+    shuffle=True
 )
 
 test_loader_ks = DataLoader(
@@ -105,7 +107,7 @@ test_loader_ks = DataLoader(
     shuffle=False
 )
 # singular test loader for now
-test_loaders = {512*coarsef: test_loader_ks}
+test_loaders = {512/coarsef: test_loader_ks}
 
 
 # Creating l2 and h10 loss functions
@@ -154,5 +156,7 @@ trainer.train(
     save_every = 5,
     save_dir = "./checkpoints",
 )
-torch.save(operator, config.save_model_path)
+
+save_model_path = f'/central/groups/esm/reusebi/MLStability/KS_FNO/KS/models/fno_coarsen{coarsef}_nmodes{n_modes}_epochs{epochs}_hchannels{hidden_channels}_nlayers{nlayers}.pth'
+torch.save(operator, save_model_path)
 print("Training complete!")

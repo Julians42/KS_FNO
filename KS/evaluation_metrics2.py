@@ -20,17 +20,22 @@ def ks_test(true_data, nn_data):
 # compute TKE
 def TKE(u):
     """Computes the total kinetic energy of the"""
-    umean = np.mean(u, axis=0) 
-    return np.mean((u-umean)**2, axis=1)
+    umean = np.mean(u, axis=(1,2)).reshape(-1,1,1) 
+    return ((u-umean)**2).flatten()
 
 # compute 1D spectrum 
-def spectrum1(data_array, l):
-    u = np.fft.fft2(data_array)
+# ensemble should be axis 0
+def spectrum1(data_array, dx, ax):
+    u = np.fft.fft(data_array, axis=ax)
     print(u.shape)
-    k_max = data_array.shape[1] // 2
+    k_max = data_array.shape[2] // 2
 
-    spectrum = np.sqrt((np.abs(u)**2).mean(axis=0))[0:k_max + 1]
-    freqs = np.fft.fftfreq(u.shape[1]+1, d=l/u.shape[1])[0:u.shape[1]//2+1]
+    if ax == 1:
+        axmean = (0,2)
+    if ax == 2:
+        axmean = (0,1)
+    spectrum = (np.abs(u)**2).mean(axis=axmean)[0:k_max + 1]
+    freqs = np.arange(0,len(spectrum))
     return spectrum, freqs
 
 ######### Plot Functions #########
@@ -63,13 +68,15 @@ def plot_histogram_density(data_result, nn_result):
     return fig, ks_stat
 
 
-def plot_tke_spectra(data_result, nn_result, threshold = 3.2):
+def plot_tke_density(data_result, nn_result, threshold = 3.2):
 
     x_vals = np.linspace(0, threshold, 500)
 
     # compute TKE for both distributions
     tke_data = TKE(data_result)
     tke_nn = TKE(nn_result)
+
+    print(tke_data.shape)
 
     # compute KDE for both distributions
     kde_data = gaussian_kde(tke_data)
@@ -92,43 +99,62 @@ def plot_tke_spectra(data_result, nn_result, threshold = 3.2):
     plt.title(f"TKE Density Comparison with KS: {ks_stat.statistic:.2g}, p-value: {ks_stat.pvalue:.2g}")
     return fig, ks_stat
 
-def plot_freq_spectrum(data_array, nn_array, config):
-    l = config["default"]["data"]["architecture"]["l"]
+def plot_freq_spectrum(data_array, nn_array, dx):
     fig, ax = plt.subplots(figsize=(6,6))
 
     ax.set_yscale('log')
 
-    operator_spectra, freqs = spectrum1(data_array, l)
-    nn_spectra, freqs = spectrum1(nn_array, l)
+    operator_spectra, freqs = spectrum1(data_array, dx, 2)
+    nn_spectra, freqs = spectrum1(nn_array, dx, 2)
+
+    ax.plot(freqs, operator_spectra, label='True', color='k')
+    ax.plot(freqs, nn_spectra, label='NN', color='r', linestyle = '--')
+    ax.legend()
+    ax.set_xlabel('Wavenumber k')
+    ax.set_ylabel('Energy')
+    ax.set_title('1D Spectrum Space')
+    return fig, np.max(np.abs(operator_spectra - nn_spectra)), freqs[np.argmax(np.abs(operator_spectra - nn_spectra))]
+
+def plot_freq_spectrum_time(data_array, nn_array, dt):
+    fig, ax = plt.subplots(figsize=(6,6))
+
+    ax.set_yscale('log')
+
+    operator_spectra, freqs = spectrum1(data_array, dt, 1)
+    nn_spectra, freqs = spectrum1(nn_array, dt, 1)
 
     ax.plot(freqs * 2 * np.pi, operator_spectra, label='True', color='k')
     ax.plot(freqs * 2 * np.pi, nn_spectra, label='NN', color='r', linestyle = '--')
     ax.legend()
     ax.set_xlabel('Wavenumber k')
     ax.set_ylabel('Energy')
-    ax.set_title('1D Spectrum')
+    ax.set_title('1D Spectrum Time')
     return fig, np.max(np.abs(operator_spectra - nn_spectra)), freqs[np.argmax(np.abs(operator_spectra - nn_spectra))]
 
-def plot_spatial_autocorr(data_result, nn_result, config):
-    l = config["default"]["data"]["architecture"]["l"]
-    x_values = np.linspace(0, l, data_result.shape[0])
+def plot_spatial_autocorr(data_result, nn_result, dx):
+    nx = data_result.shape[-1]
+    x_values = np.arange(0, nx*dx, dx)
     truth_autocorr_list = np.zeros(data_result.shape)
     nn_autocorr_list = np.zeros(nn_result.shape)
-    for index in range(data_result.shape[1]):
-        truth_autocorr_list[:, index] = np.correlate(data_result[:,index], data_result[:,index], mode='full')[len(data_result[:,index])-1:]
-        nn_autocorr_list[:, index] = np.correlate(nn_result[:,index], nn_result[:,index], mode='full')[len(nn_result[:,index])-1:]
+    for i in range(data_result.shape[0]):
+        for t in range(data_result.shape[1]):
+            truth_autocorr_list[i,t,:] = np.correlate(data_result[i,t,:], data_result[i,t,:], mode='full')[len(data_result[i,t])-1:]
+            nn_autocorr_list[i,t,:] = np.correlate(nn_result[i,t,:], nn_result[i,t,:], mode='full')[len(data_result[i,t])-1:]
     # return truth_autocorr_list, nn_autocorr_list
     # plot means  
     fig = plt.figure(figsize=(6,6))
-    plt.plot(x_values, np.mean(truth_autocorr_list, axis=1), label='True', color='k')
-    plt.plot(x_values, np.mean(nn_autocorr_list, axis=1), label='FNO', color='r', linestyle = '--')
+    truth_autocorr = np.mean(truth_autocorr_list, axis=(0,1))
+    nn_autocorr = np.mean(nn_autocorr_list, axis=(0,1))
+    plt.plot(x_values, truth_autocorr, label='True', color='k')
+    plt.plot(x_values, nn_autocorr, label='FNO', color='r', linestyle = '--')
 
     plt.legend()
     plt.ylabel("Spatial Autocorrelation")
     plt.xlabel("Lag")
+    plt.xlim([0,100])
 
     # compute MSE and add to title 
-    mse = np.mean((np.mean(truth_autocorr_list, axis=1) - np.mean(nn_autocorr_list, axis=1))**2)
+    mse = np.mean((truth_autocorr -nn_autocorr)**2)
     plt.title(f"Autocorrelation Comparison with MSE = {mse:.2g}");
     return fig, mse
 
@@ -166,38 +192,45 @@ def plot_trajectory_comparison(data_result, nn_result, config):
 
     return fig
 
-def plot_temporal_autocorr(data_result, nn_result, config):
-    total_time = config["default"]["data"]["architecture"]["T"] * config["default"]["data"]["architecture"]["dt"]
-    time_values = np.linspace(0, total_time, data_result.shape[1])
+def plot_temporal_autocorr(data_result, nn_result, dt):
+    nt = data_result.shape[1]
+    x_values = np.arange(0, nt*dt, dt)
     truth_autocorr_list = np.zeros(data_result.shape)
     nn_autocorr_list = np.zeros(nn_result.shape)
-    for index in range(data_result.shape[0]):
-        truth_autocorr_list[index, :] = np.correlate(data_result[index, :], data_result[index, :], mode='full')[len(data_result[index,:])-1:]
-        nn_autocorr_list[index, :] = np.correlate(nn_result[index, :], nn_result[index, :], mode='full')[len(nn_result[index, :])-1:]
+    for i in range(data_result.shape[0]):
+        for x in range(data_result.shape[2]):
+            truth_autocorr_list[i,:,x] = np.correlate(data_result[i,:,x], data_result[i,:,x], mode='full')[len(data_result[i,:,x])-1:]
+            nn_autocorr_list[i,:,x] = np.correlate(nn_result[i,:,x], nn_result[i,:,x], mode='full')[len(data_result[i,:,x])-1:]
     # return truth_autocorr_list, nn_autocorr_list
     # plot means  
     fig = plt.figure(figsize=(6,6))
-    plt.plot(time_values, np.mean(truth_autocorr_list, axis=0), label='True', color='k')
-    plt.plot(time_values, np.mean(nn_autocorr_list, axis=0), label='FNO', color='r', linestyle = '--')
+    truth_autocorr = np.mean(truth_autocorr_list, axis=(0,2))
+    nn_autocorr = np.mean(nn_autocorr_list, axis=(0,2))
+    plt.plot(x_values, truth_autocorr, label='True', color='k')
+    plt.plot(x_values, nn_autocorr, label='FNO', color='r', linestyle = '--')
 
     plt.legend()
-    plt.ylabel("Temporal Autocorrelation")
-    plt.xlabel("Time Lag")
+    plt.ylabel("Spatial Autocorrelation")
+    plt.xlabel("Lag")
+    plt.xlim([0,100])
 
     # compute MSE and add to title 
-    mse = np.mean((np.mean(truth_autocorr_list, axis=0) - np.mean(nn_autocorr_list, axis=0))**2)
-    plt.title(f"Temporal Autocorrelation with MSE = {mse:.2g}");
+    mse = np.mean((truth_autocorr -nn_autocorr)**2)
+    plt.title(f"Autocorrelation Comparison with MSE = {mse:.2g}");
     return fig, mse
 
 
 
-def evaluate_metrics(true_data, nn_data, config, save_to_pdf=False, tke_plot_max_threshold = 3.2):
-    fig0 = plot_trajectory_comparison(true_data, nn_data, config)
+def evaluate_metrics(true_data, nn_data, dt, dx, save_to_pdf=False, tke_plot_max_threshold = 3.2):
+
+
+    # fig0 = plot_trajectory_comparison(true_data, nn_data, config)
     fig1, ks_density = plot_histogram_density(true_data, nn_data)
-    fig2, ks_tke = plot_tke_spectra(true_data, nn_data, tke_plot_max_threshold)
-    fig3, max_error, freq_max_error = plot_freq_spectrum(true_data, nn_data, config)
-    fig4, mse = plot_spatial_autocorr(true_data, nn_data, config)
-    fig5, mse_temporal = plot_temporal_autocorr(true_data, nn_data, config)
+    fig2, ks_tke = plot_tke_density(true_data, nn_data, tke_plot_max_threshold)
+    fig3, max_error, freq_max_error = plot_freq_spectrum(true_data, nn_data, dx)
+    fig4, max_error2, freq_max_error2 = plot_freq_spectrum_time(true_data, nn_data, dt)
+    fig5, mse = plot_spatial_autocorr(true_data, nn_data, dx)
+    fig6, mse_temporal = plot_temporal_autocorr(true_data, nn_data, dt)
 
     # print metrics of interest
     print(f"Histogram Kolmogorov-Smirnov Error: {ks_density.statistic:.2g}, p-value: {ks_density.pvalue:.2g}")
@@ -207,10 +240,11 @@ def evaluate_metrics(true_data, nn_data, config, save_to_pdf=False, tke_plot_max
 
     if  save_to_pdf != False:
         with PdfPages(f'{save_to_pdf}.pdf') as pdf:
-            pdf.savefig(fig0)
+            # pdf.savefig(fig0)
             pdf.savefig(fig1)
             pdf.savefig(fig2)
             pdf.savefig(fig3)
             pdf.savefig(fig4)
             pdf.savefig(fig5)
-    return fig0, fig1, fig2, fig3, fig4, fig5, ks_density, ks_tke
+            pdf.savefig(fig6)
+    return fig1, fig2, fig3, fig4, fig5, ks_density, ks_tke
