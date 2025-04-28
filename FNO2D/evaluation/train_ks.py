@@ -63,15 +63,55 @@ def coarsen_data(data, factor):
 
 data = coarsen_data(data, config.data.coarsen_factor)
 
+####
+width, time, samples = data.shape
 
+n_history = config.fno2d.in_channels
 n_train = config.data.n_train
+n_test = config.data.n_test 
 data_start = config.data.data_start
-Xtrain = data[:, (data_start - 1):1999, :n_train].flatten(1, -1).unsqueeze(1).permute(2, 1, 0)
-ytrain = data[:, data_start:2000, :n_train].flatten(1, -1).unsqueeze(1).permute(2, 1, 0)
 
-n_test = config.data.n_tests[0] # could implement for different resolutions
-Xtest = data[:, (data_start - 1):1999, (1200 - n_test):].flatten(1, -1).unsqueeze(1).permute(2, 1, 0)
-ytest = data[:, data_start:2000, (1200 - n_test):].flatten(1, -1).unsqueeze(1).permute(2, 1, 0)
+T = time - (n_history - 1)
+
+X_samp = []
+y_samp = []
+for sample in range(samples):
+    for window_start in range(data_start, 2000 - n_history, 10): # start, stop, step (step could make sense to be n_history)
+        window_end = window_start + n_history
+        if (window_end+1 >= 2000) or (len(X_samp) >= (n_train + n_test)):
+            # Exit if we have enough samples or if the window exceeds the data length
+            break
+        X_samp.append(data[:, window_start:window_end, sample])
+        y_samp.append(data[:, window_end + 1, sample])
+
+
+# Stack along a new axis for time history
+Xtrain = torch.stack(X_samp[:n_train], dim=0) 
+ytrain = torch.stack(y_samp[:n_train], dim=0)
+Xtest = torch.stack(X_samp[n_train:], dim=0)
+ytest = torch.stack(y_samp[n_train:], dim=0)
+
+# expand dims to be (num_training_samples, 1, width, n_history)
+Xtrain = Xtrain.unsqueeze(1)  # (n_train, 1, width, n_history)
+ytrain = ytrain.unsqueeze(1)  # (n_train, 1, width)
+Xtest = Xtest.unsqueeze(1)  # (n_test, 1, width, n_history)
+ytest = ytest.unsqueeze(1)  # (n_test, 1, width)
+
+# shp_old_Xtrain = data[:, (data_start - 1):1999, :n_train].flatten(1, -1).unsqueeze(1).permute(2, 1, 0)
+# shp_ytrain = data[:, data_start:2000, :n_train].flatten(1, -1).unsqueeze(1).permute(2, 1, 0)
+
+
+#####
+# Rearrange to (samples, timesteps, width)
+# Xtrain = Xtrain.permute(3, 2, 1, 0)  # (n_train, T, 3, 512)
+# Xtrain = Xtrain.reshape(-1, n_history, width)  # (n_train*(T), 3, 512)
+
+# Xtrain = data[:, (data_start - 1):1999, :n_train].flatten(1, -1).unsqueeze(1).permute(2, 1, 0)
+# ytrain = data[:, data_start:2000, :n_train].flatten(1, -1).unsqueeze(1).permute(2, 1, 0)
+
+# n_test = config.data.n_tests[0] # could implement for different resolutions
+# Xtest = data[:, (data_start - 1):1999, (1200 - n_test):].flatten(1, -1).unsqueeze(1).permute(2, 1, 0)
+# ytest = data[:, data_start:2000, (1200 - n_test):].flatten(1, -1).unsqueeze(1).permute(2, 1, 0)
 
 # data loaders
 # Define training dataset

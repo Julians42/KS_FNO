@@ -4,8 +4,8 @@ default: &DEFAULT
   # For computing compression
   n_params_baseline: None
   verbose: True
-  arch: 'fno'
-  save_model_path: '/central/groups/esm/jschmitt/neuralop/ks_models/res_1.pth'
+  arch: 'fno2d'
+  save_model_path: '/central/groups/esm/jschmitt/neuralop/models_2d/res_1.pth'
 
   #Distributed computing
   distributed:
@@ -16,11 +16,13 @@ default: &DEFAULT
     seed: 666
 
   # FNO related
-  fno:
+  fno2d:
     data_channels: 1
     out_channels: 1
-    n_modes: [128]
-    hidden_channels: 128
+    in_channels: 1
+    n_modes_height: 64
+    n_modes_width: 16
+    hidden_channels: 64
     projection_channel_ratio: 4
     n_layers: 4
     domain_padding: None #0.078125
@@ -62,7 +64,8 @@ default: &DEFAULT
     folder: '/central/groups/esm/jschmitt/neuralop/' #'/scratch/julian/neuralop/'
     file: 'pygen_1200_512_2000_20_201.06.pth'
     batch_size: 512
-    n_train: 400
+    n_train: 100000
+    n_test: 20000
     data_start: 500
     coarsen_factor: 1
     train_resolution: 512 # full resolution
