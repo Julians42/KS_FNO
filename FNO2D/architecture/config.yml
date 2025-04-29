@@ -5,8 +5,8 @@ default: &DEFAULT
   n_params_baseline: None
   verbose: True
   arch: 'fno2d'
-  save_model_path: '/central/groups/esm/jschmitt/neuralop/models_2d/res_1.pth'
-
+  save_model_root: '/scratch/julian/neuralop/models_2d/' #'/central/groups/esm/jschmitt/neuralop/models_2d/res_1.pth'
+  t_points: 10
   #Distributed computing
   distributed:
     use_distributed: False
@@ -47,7 +47,7 @@ default: &DEFAULT
 
   # Optimizer
   opt:
-    n_epochs: 50
+    n_epochs: 15
     learning_rate: 2e-3
     training_loss: 'h1'
     weight_decay: 1e-4
@@ -61,7 +61,7 @@ default: &DEFAULT
 
   # Dataset related
   data:
-    folder: '/central/groups/esm/jschmitt/neuralop/' #'/scratch/julian/neuralop/'
+    folder: '/scratch/julian/neuralop/' #'/central/groups/esm/jschmitt/neuralop/'
     file: 'pygen_1200_512_2000_20_201.06.pth'
     batch_size: 512
     n_train: 100000
@@ -93,7 +93,7 @@ default: &DEFAULT
   wandb:
     log: True
     name: None # If None, config will be used but you can override it here
-    group: '' 
+    group: ''
     project: "KS-Equation"
     entity: "jschmitt-reusebi" # put your username here
     sweep: False

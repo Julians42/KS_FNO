@@ -1,6 +1,12 @@
 import sys
 import argparse
 
+# parser = argparse.ArgumentParser()
+# parser.add_argument('--tpoints', type=str, help='Number of time history points for the 2D FNO')
+# parser.add_argument('--coarsen_factor', type=str, help='Coarsening factor for the 2D FNO')
+# args = parser.parse_args()
+
+
 import numpy as np
 import scipy
 import torch
@@ -32,7 +38,7 @@ print(f"Using device: {device}!")
 # args = parser.parse_args()
 
 # config_file = args.config_file
-config_file = "/home/jschmitt/KS_FNO/FNO2D/architecture/config.yml"
+config_file = "../architecture/config.yml" # "/home/jschmitt/KS_FNO/FNO2D/architecture/config.yml"
 
 print(f"Using config file: {config_file}")
 
@@ -50,25 +56,31 @@ pipe = ConfigPipeline(
 config = pipe.read_conf()
 
 
-# Load in data - currently messy format - would be good to separate into different file or 
-# reproduce our data generation process in python, but leaving as this for now ;)  
+# Load in data - currently messy format - would be good to separate into different file or
+# reproduce our data generation process in python, but leaving as this for now ;)
 
 
 # f = h5py.File(config.data.folder + "KS.mat")
 # data = torch.tensor(f['u'][:], dtype = torch.float32)
 data = torch.load(config.data.folder + config.data.file).to(torch.float32).permute(2, 1, 0)
-
+print(data.shape)
 def coarsen_data(data, factor):
     return data[::factor, :, :]
 
 data = coarsen_data(data, config.data.coarsen_factor)
 
+# convert the config arguments
+# config.data.train_resolution = int(config.data.train_resolution / args.coarsen_factor)
+# config.data.test_resolutions[0] = int(config.data.test_resolutions[0] / args.coarsen_factor)
+# config.data.architecture.n_points = int(config.data.architecture.n_points / args.coarsen_factor)
+# config.data.architecture.width = int(config.data.architecture.width / args.coarsen_factor)
+
 ####
 width, time, samples = data.shape
 
-n_history = config.fno2d.in_channels
+n_history = config.t_points
 n_train = config.data.n_train
-n_test = config.data.n_test 
+n_test = config.data.n_test
 data_start = config.data.data_start
 
 T = time - (n_history - 1)
@@ -82,11 +94,11 @@ for sample in range(samples):
             # Exit if we have enough samples or if the window exceeds the data length
             break
         X_samp.append(data[:, window_start:window_end, sample])
-        y_samp.append(data[:, window_end + 1, sample])
+        y_samp.append(data[:, (window_start+1):(window_end+1), sample])
 
 
 # Stack along a new axis for time history
-Xtrain = torch.stack(X_samp[:n_train], dim=0) 
+Xtrain = torch.stack(X_samp[:n_train], dim=0)
 ytrain = torch.stack(y_samp[:n_train], dim=0)
 Xtest = torch.stack(X_samp[n_train:], dim=0)
 ytest = torch.stack(y_samp[n_train:], dim=0)
@@ -163,8 +175,8 @@ else:
 # Load model from configuration
 operator = get_model(config)
 
-optimizer = AdamW(operator.parameters(), 
-                  lr=config.opt.learning_rate, 
+optimizer = AdamW(operator.parameters(),
+                  lr=config.opt.learning_rate,
                   weight_decay=config.opt.weight_decay)
 
 scheduler = torch.optim.lr_scheduler.StepLR(
@@ -175,9 +187,9 @@ scheduler = torch.optim.lr_scheduler.StepLR(
 
 print("Model has {} parameters".format(count_model_params(operator)))
 
-# train the model 
+# train the model
 trainer = Trainer(
-    model = operator, 
+    model = operator,
     n_epochs = config.opt.n_epochs,
     device = device,
 
@@ -193,5 +205,5 @@ trainer.train(
     save_every = 5,
     save_dir = "./checkpoints",
 )
-torch.save(operator, config.save_model_path)
+torch.save(operator, config.save_model_root + f"fno_coarsen{config.data.coarsen_factor}_tpoints{n_history}.pth")
 print("Training complete!")

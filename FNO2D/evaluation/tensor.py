@@ -11,7 +11,7 @@ class TensorDataset(Dataset):
     def __getitem__(self, index):
         x = self.x[index]
         y = self.y[index]
-        
+
         if self.transform_x is not None:
             x = self.transform_x(x)
 

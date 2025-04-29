@@ -1,5 +1,8 @@
+# plots
+FNO2D/evaluation/fno_coarsen*
+
 # weights and biases
-.wandb/ 
+.wandb/
 wandb_api_key.txt
 
 # Byte-compiled / optimized / DLL files
@@ -80,7 +83,7 @@ target/
 #Ipython Notebook
 .ipynb_checkpoints
 
-#Sbatch 
+#Sbatch
 *.out
 *.pt
 *.pth

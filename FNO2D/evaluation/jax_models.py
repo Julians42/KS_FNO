@@ -1,7 +1,6 @@
 from jax.scipy.linalg import inv, det, svd
 import jax.numpy as jnp
 from jax import random, jit
-from sklearn.datasets import make_spd_matrix
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 import jax
@@ -51,7 +50,7 @@ class Lorenz63(BaseModel):
         self.sigma = sigma
         self.rho = rho
         self.beta = beta
-    
+
     def step(self, x):
         x_dot = self.sigma * (x[1] - x[0])
         y_dot = x[0] * (self.rho - x[2]) - x[1]
@@ -86,7 +85,7 @@ class KuramotoSivashinsky(BaseModel):
         f3 = self.dt * jnp.real(jnp.mean((-4-3*LR-LR**2+jnp.exp(LR)*(4-LR))/LR**3, axis=1))
         g = -0.5j * k
         return k, E, E2, Q, f1, f2, f3, g
-        
+
     def step(self, x):
         return kuramoto_sivashinsky_step(x, self.dt, self.E, self.E2, self.Q, self.f1, self.f2, self.f3, self.g)
 
@@ -101,7 +100,7 @@ def step_function(carry, input):
         x_noise = x_j + random.multivariate_normal(key, jnp.zeros(n), Q)
         obs_state = jnp.dot(H, x_noise)
         # Adjust noise dimension to the number of observed states
-        obs_noise = random.multivariate_normal(subkey, jnp.zeros(H.shape[0]), R) 
+        obs_noise = random.multivariate_normal(subkey, jnp.zeros(H.shape[0]), R)
         return x_noise, obs_state + obs_noise
     def no_update():
         # Return a vector of NaNs matching the number of observed states
@@ -158,7 +157,7 @@ def plot_ensemble_mean_and_variance(states, observations, state_index, observati
     #plt.ylabel(f'State {state_index+1} Value')
     plt.legend()
     plt.show()
-    
+
 
 
 @partial(jit, static_argnums=(0))
@@ -167,7 +166,7 @@ def generate_localization_matrix(n, localization_radius):
     Generate a localization matrix with given radius
     """
     i = jnp.arange(n)[:,None]
-    j = jnp.arange(n) 
+    j = jnp.arange(n)
     min_modulo_distance = jnp.minimum(jnp.abs(i - j), n - jnp.abs(i - j))
     r = min_modulo_distance / localization_radius
     localization_matrix = jnp.exp(-(r**2))
