@@ -1,6 +1,6 @@
 # plots
 FNO2D/evaluation/fno_coarsen*
-
+*.png
 # weights and biases
 .wandb/
 wandb_api_key.txt
